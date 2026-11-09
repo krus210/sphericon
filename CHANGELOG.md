@@ -1,5 +1,57 @@
 # Changelog
 
+## [0.7.0](https://github.com/getsphericon/sphericon/compare/v0.6.0...v0.7.0) (2026-11-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* the Second factor columns of users move to the new table second_factors. Upgrade: Run the migrations; every factor is copied before the columns are dropped.
+* Confirm requires the enrollmentId returned with the pending secret. Upgrade: Run migrations, deploy the bundled frontend, and echo enrollmentId in API clients. Restart pending enrollment after upgrading.
+* **workspaces:** the automation_evaluate_trigger and rule_evaluate_event jobs name their Workspace at workspaceId instead of workspace_id (ADR 0033: a renamed payload field waits for a Major). Upgrade: stop the previous release's workers before `sphericon migrate`; the migration rewrites the jobs that wait, and a worker of the previous release would read a rewritten job as no Workspace's.
+* **events:** the domain-event outbox tables are dropped, the SPHERICON_OUTBOX_RETENTION_FLOOR_DAYS setting and the `sphericon events replay` command are gone, and the outbox_lag_seconds, outbox_dead_letters and watermill_* metrics are no longer exported. Upgrade: let the running instance drain its outbox (outbox_lag_seconds at 0, no dead letters) before upgrading, then run `sphericon migrate`; remove SPHERICON_OUTBOX_RETENTION_FLOOR_DAYS from the configuration; the event jobs are covered by the job queue alerts (river_queue_oldest_available_age_seconds, river_work_count).
+* the staff surface's `POST /signup-items/{id}/archive` is gone, replaced by `DELETE /signup-items/{id}`, and a Sign-up item's `archivedAt` is now `discardedAt`. Deleted items are no longer listed and can no longer be changed.
+* **sms:** sms channel on Twilio, with Confirmation required, E.164 and undelivered ([#1048](https://github.com/getsphericon/sphericon/issues/1048))
+
+### Features
+
+* archive is not discard: Broadcasts, Automations and Segments are archived, the rest discarded ([#1075](https://github.com/getsphericon/sphericon/issues/1075)) ([587bd14](https://github.com/getsphericon/sphericon/commit/587bd147e7996415f35304b84a2846a7c4ce9750))
+* **consent:** publish sms.unsubscribed and key a Telegram link's opt-out event by its opt-out ([#1236](https://github.com/getsphericon/sphericon/issues/1236)) ([890b06d](https://github.com/getsphericon/sphericon/commit/890b06de9c5cc2d95f623f883770f232d801163d))
+* **events:** deliver domain events as River jobs, one per consumer that wants them ([#1084](https://github.com/getsphericon/sphericon/issues/1084)) ([33e9a02](https://github.com/getsphericon/sphericon/commit/33e9a02ad56368e074315899307f4525d01789ec))
+* **events:** inspect retained publication metadata ([#1239](https://github.com/getsphericon/sphericon/issues/1239)) ([7b9611d](https://github.com/getsphericon/sphericon/commit/7b9611dcbc6bc37bfbaa52e1f088eb28c41db81d))
+* **events:** journal publications and replay report consumers ([#1234](https://github.com/getsphericon/sphericon/issues/1234)) ([7d4fda7](https://github.com/getsphericon/sphericon/commit/7d4fda780d848bdf8830cc8cc1f72678e22edf0a))
+* **sms:** sms channel on Twilio, with Confirmation required, E.164 and undelivered ([#1048](https://github.com/getsphericon/sphericon/issues/1048)) ([cbb430d](https://github.com/getsphericon/sphericon/commit/cbb430dc5f79e9c95a199e957433eecbc5751d72))
+* **typespec:** refuse a contract description that names the code behind it ([#1170](https://github.com/getsphericon/sphericon/issues/1170)) ([26df3cb](https://github.com/getsphericon/sphericon/commit/26df3cb8a8f4e0f15be5f86a6f36e89003e139e7))
+
+
+### Bug Fixes
+
+* **api:** list only operations as Service operations and read refusals as errors in tests ([#1150](https://github.com/getsphericon/sphericon/issues/1150)) ([3220681](https://github.com/getsphericon/sphericon/commit/3220681cf4c8571882ee9a2acd989cdb00332140))
+* bind second-factor transitions to their enrollment ([#1231](https://github.com/getsphericon/sphericon/issues/1231)) ([13bc2c9](https://github.com/getsphericon/sphericon/commit/13bc2c904ea7666a81289e905bed0833e2a87927))
+* close an Integration's window whose provider was deleted, and tidy two Go helpers after archive ([#1083](https://github.com/getsphericon/sphericon/issues/1083)) ([ca7303c](https://github.com/getsphericon/sphericon/commit/ca7303c79c68e4ef03b3df08de56cccaecdc1ba6))
+* **customfields:** check a retype's Live use and write it under the Workspace lock ([#1168](https://github.com/getsphericon/sphericon/issues/1168)) ([70f8f87](https://github.com/getsphericon/sphericon/commit/70f8f879063f0a70b711cba75d8426857a810532))
+* **dev:** stop the dns daemon in dev:down and worktrees:rm ([#1078](https://github.com/getsphericon/sphericon/issues/1078)) ([2a10a96](https://github.com/getsphericon/sphericon/commit/2a10a96d3abe9bb1f3ff295dc36635641f0a0db2))
+* **integrations:** save an Integration's credentials again from the app ([#1085](https://github.com/getsphericon/sphericon/issues/1085)) ([1523888](https://github.com/getsphericon/sphericon/commit/15238887d17c7b09b9a99d6700fdebbb8a991fe6)), closes [#1082](https://github.com/getsphericon/sphericon/issues/1082)
+* **integrations:** saving the same Telegram bot token again lifts a refused hold ([#1079](https://github.com/getsphericon/sphericon/issues/1079)) ([4ce78bd](https://github.com/getsphericon/sphericon/commit/4ce78bd2688d959966373e2b28768585e8d2f6a2)), closes [#1077](https://github.com/getsphericon/sphericon/issues/1077)
+* keep a Contact's email lower-cased in the database and state the Event facts in the schema ([#1107](https://github.com/getsphericon/sphericon/issues/1107)) ([11e033f](https://github.com/getsphericon/sphericon/commit/11e033f51b11ac9d7ecd43d839b94dac483d68ab))
+* **messaging:** sign mail with relaxed DKIM through go-msgauth ([#1253](https://github.com/getsphericon/sphericon/issues/1253)) ([4cdb025](https://github.com/getsphericon/sphericon/commit/4cdb025b56e25f69cea304dbe4b573fbca898ee7)), closes [#1181](https://github.com/getsphericon/sphericon/issues/1181)
+* model webhook health and ignore stale delivery results ([#1228](https://github.com/getsphericon/sphericon/issues/1228)) ([78b6232](https://github.com/getsphericon/sphericon/commit/78b623211015d76316b5bcbc17302df776981a7b))
+* preserve automation editor save sessions ([#1240](https://github.com/getsphericon/sphericon/issues/1240)) ([8b5e10f](https://github.com/getsphericon/sphericon/commit/8b5e10f5c24047c72131bfd67ceb976572038535))
+* read the Instance clock in Outbound send, step execution, automations and engagement stamps ([#1171](https://github.com/getsphericon/sphericon/issues/1171)) ([d4516a2](https://github.com/getsphericon/sphericon/commit/d4516a2e9d6a81682e5d2c9264675da4100234f9))
+* **ses:** defer throttling without SDK retries ([#1238](https://github.com/getsphericon/sphericon/issues/1238)) ([916a16e](https://github.com/getsphericon/sphericon/commit/916a16e4271ae486d69efb9f0df27ebe3d49461c)), closes [#1180](https://github.com/getsphericon/sphericon/issues/1180)
+* **staff:** refuse one Workspace's usage without the staff license ([#1115](https://github.com/getsphericon/sphericon/issues/1115)) ([e0eeb1f](https://github.com/getsphericon/sphericon/commit/e0eeb1fa3fe782101f544a9f98f40638416881da))
+* **telegram:** consume consent observations before changing state ([#1242](https://github.com/getsphericon/sphericon/issues/1242)) ([82581af](https://github.com/getsphericon/sphericon/commit/82581afc6bd051f5655220d7fd3e887027d6c1c5))
+* **workspaces:** erase a deleted Workspace's queued jobs with its rows ([#1225](https://github.com/getsphericon/sphericon/issues/1225)) ([b50e726](https://github.com/getsphericon/sphericon/commit/b50e726f4d236ca472a972c3e14a45b68109b71b))
+
+
+### Performance Improvements
+
+* **ent:** verify a scoped bulk create's references once per batch ([#1106](https://github.com/getsphericon/sphericon/issues/1106)) ([b5d081b](https://github.com/getsphericon/sphericon/commit/b5d081b4e223ba23ce96e777dc84e75b29f3c559))
+
+
+### Code Refactoring
+
+* reach the core through checked operations and one-call drivers ([#1241](https://github.com/getsphericon/sphericon/issues/1241)) ([b318a63](https://github.com/getsphericon/sphericon/commit/b318a63ea183c687865c29e110708ade4ddd4fc9))
+
 ## [0.6.0](https://github.com/getsphericon/sphericon/compare/v0.5.0...v0.6.0) (2026-11-04)
 
 
